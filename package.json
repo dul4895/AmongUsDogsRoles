@@ -1,0 +1,12 @@
+{
+  "name": "amongusdogsroles-assets",
+  "private": true,
+  "version": "0.1.21",
+  "scripts": {
+    "assets:icons": "node scripts/render-role-icons.cjs",
+    "assets:explosion": "node scripts/render-explosion.cjs"
+  },
+  "devDependencies": {
+    "sharp": "0.35.4"
+  }
+}

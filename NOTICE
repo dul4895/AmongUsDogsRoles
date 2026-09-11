@@ -1,0 +1,33 @@
+AmongUsDogsRoles 0.1.21 — GNU General Public License, version 3.
+See LICENSE for the full license terms.
+
+Town of Us Mira: https://github.com/AU-Avengers/TOU-Mira
+Baseline: b09079dbb632678977aaae2d4d019a2be4415f30 (1.7.3), GPL-3.0.
+Upstream authors: Atony, AlchlcSystm, angxlwtf, MyDragonBreath, Nix,
+Satire, xerminator, XtraCube, whichtwix, Zeo, and contributors.
+
+Selected button and tracking sprites are retained from the upstream asset
+bundle: Capture (JailButton), Mark, Recall, Alert, Shoot (SheriffShootButton),
+Arrow, and Beacon0–Beacon9 (EscapistMark_0–EscapistMark_9).
+Role/button/options registration, meeting cleanup, Reactor RPC transport,
+Mira custom murder/game-over integration, task counting, critical-sabotage
+checks, and revive/presentation patterns were adapted and simplified from
+Town of Us Mira and MiraAPI. This plugin does not include or link against
+TownOfUsMira.dll. Role mechanics, host validation, UI, and presentation have
+been substantially modified for AmongUsDogsRoles's nine-role roster.
+
+Explode, Sniff, Execute, Release, Investigate, ChainLink, Fake, Unfake,
+Blast0–Blast35 and Explosion.wav are original artwork/audio under this
+mod's GPL-3.0 license. Their editable sources and generators are included.
+
+Runtime dependencies retain their own licenses:
+MiraAPI: https://github.com/All-Of-Us-Mods/MiraAPI
+Reactor: https://github.com/NuclearPowered/Reactor
+BepInEx: https://github.com/BepInEx/BepInEx
+The release loader also includes Doorstop, Il2CppInterop, and .NET;
+its license notices and upstream source/reference archives are bundled
+with the release. Unmodified loader files originate from the Town of Us
+Mira 1.7.3 Windows distribution.
+
+Among Us and its game assets belong to Innersloth. Users supply their own
+installed copy. This is an unofficial mod, not an Innersloth product.
