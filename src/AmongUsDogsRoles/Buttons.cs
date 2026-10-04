@@ -12,18 +12,17 @@ namespace AmongUsDogsRoles;
 [MiraIgnore]
 public abstract class RoleButton : CustomActionButton
 {
-    private bool hudVisible = true;
     public abstract Ability Action { get; }
     public override bool CanClick() => !RoleGuide.BlocksControls && Button && Button!.isActiveAndEnabled && base.CanClick();
     public override ButtonLocation Location { get; set; } = ButtonLocation.BottomRight;
     public override BaseKeybind Keybind => MiraGlobalKeybinds.PrimaryAbility;
     public override void SetActive(bool visible, RoleBehaviour role)
-    { hudVisible = visible; Button?.ToggleVisible(visible && Enabled(role) && ButtonPresentation.Relevant(Action)); }
+    { Button?.ToggleVisible(visible && Enabled(role) && ButtonPresentation.Relevant(Action)); }
     public override void FixedUpdateHandler(PlayerControl player)
     {
         ButtonPresentation.Sync(this, Action, player);
         base.FixedUpdateHandler(player);
-        ButtonPresentation.Refresh(this, Action, player, hudVisible);
+        ButtonPresentation.Refresh(this, Action, player, AbilityHudVisibility.Visible);
     }
     public override float Cooldown => RoundState.Cooldown(Action);
     public override float InitialCooldown => 10;
@@ -35,14 +34,12 @@ public abstract class RoleButton : CustomActionButton
 [MiraIgnore]
 public abstract class TargetButton : CustomActionButton<PlayerControl>
 {
-    private bool hudVisible = true;
     public abstract Ability Action { get; }
     public override bool CanClick() => !RoleGuide.BlocksControls && Button && Button!.isActiveAndEnabled && base.CanClick();
     public override ButtonLocation Location { get; set; } = ButtonLocation.BottomRight;
     public override BaseKeybind Keybind => MiraGlobalKeybinds.PrimaryAbility;
     public override void SetActive(bool visible, RoleBehaviour role)
     {
-        hudVisible = visible;
         var show = visible && Enabled(role) && ButtonPresentation.Relevant(Action);
         if (!show) { SetOutline(false); Target = null; }
         Button?.ToggleVisible(show);
@@ -51,7 +48,7 @@ public abstract class TargetButton : CustomActionButton<PlayerControl>
     {
         ButtonPresentation.Sync(this, Action, player);
         base.FixedUpdateHandler(player);
-        ButtonPresentation.Refresh(this, Action, player, hudVisible);
+        ButtonPresentation.Refresh(this, Action, player, AbilityHudVisibility.Visible);
     }
     public override float Cooldown => RoundState.Cooldown(Action);
     public override float InitialCooldown => 10;
@@ -60,6 +57,7 @@ public abstract class TargetButton : CustomActionButton<PlayerControl>
     public override bool CanUse() => base.CanUse() && RoundState.CanAct(PlayerControl.LocalPlayer) && RoundState.Ready(PlayerControl.LocalPlayer.PlayerId, Action);
     public override PlayerControl? GetTarget() => !RoundState.CanAct(PlayerControl.LocalPlayer) ? null : PlayerControl.AllPlayerControls.ToArray()
         .Where(p => AbilityService.InReach(PlayerControl.LocalPlayer, p, Action is Ability.Shoot or Ability.Investigate))
+        .Where(p => Action != Ability.Drag || AbilityService.CanCapture(p))
         .OrderBy(p => Vector2.Distance(PlayerControl.LocalPlayer.GetTruePosition(), p.GetTruePosition())).FirstOrDefault();
     public override void SetOutline(bool active)
     {
@@ -78,33 +76,47 @@ public sealed class KillButton : TargetButton
     public override BaseKeybind Keybind => VanillaKeybinding<global::KillButton>.Instance;
     public override string Name => "Kill";
     public override Ability Action => Ability.Kill;
-    public override bool Enabled(RoleBehaviour? role) => role is ILightRole && role.IsImpostor;
+    public override bool Enabled(RoleBehaviour? role) => RoleFacts.IsImpostor(role);
     public override bool CanUse() => base.CanUse() && !RoundState.Drags.ContainsKey(PlayerControl.LocalPlayer.PlayerId);
 }
 public sealed class DragButton : TargetButton
 {
     public override string Name => "Drag";
     public override Ability Action => Ability.Drag;
-    public override bool Enabled(RoleBehaviour? role) => role is PenguinRole;
+    public override bool Enabled(RoleBehaviour? role) => RoleFacts.Is<PenguinRole>(role);
     public override bool CanUse() => base.CanUse() && !RoundState.Drags.ContainsKey(PlayerControl.LocalPlayer.PlayerId) && RoundState.Ready(PlayerControl.LocalPlayer.PlayerId, Ability.Kill);
+    public override void ClickHandler()
+    {
+        // The host owns this cooldown. A click rejected for a moving target
+        // must not start Mira's optimistic full cooldown on the client.
+        ButtonPresentation.Sync(this, Action, PlayerControl.LocalPlayer);
+        if (!CanClick())
+        {
+            KidnapperCapture.LogLocalBlock(this);
+            return;
+        }
+        OnClick();
+    }
 }
 public sealed class ExecuteButton : RoleButton
 {
+    public override bool CanClick() => RoundState.CaptureFrame != Time.frameCount && base.CanClick();
     public override BaseKeybind Keybind => VanillaKeybinding<global::KillButton>.Instance;
     public override string Name => "Execute";
     public override Ability Action => Ability.Execute;
     public override float InitialCooldown => 0;
     public override float Cooldown => 0;
-    public override bool Enabled(RoleBehaviour? role) => role is PenguinRole;
+    public override bool Enabled(RoleBehaviour? role) => RoleFacts.Is<PenguinRole>(role);
     public override bool CanUse() => RoundState.CanAct(PlayerControl.LocalPlayer) && RoundState.Drags.ContainsKey(PlayerControl.LocalPlayer.PlayerId);
 }
 public sealed class ReleaseButton : RoleButton
 {
+    public override bool CanClick() => RoundState.CaptureFrame != Time.frameCount && base.CanClick();
     public override string Name => "Release";
     public override Ability Action => Ability.Release;
     public override float InitialCooldown => 0;
     public override float Cooldown => 0;
-    public override bool Enabled(RoleBehaviour? role) => role is PenguinRole;
+    public override bool Enabled(RoleBehaviour? role) => RoleFacts.Is<PenguinRole>(role);
     public override bool CanUse() => base.CanUse() && RoundState.Drags.ContainsKey(PlayerControl.LocalPlayer.PlayerId);
     public override void FixedUpdateHandler(PlayerControl player)
     {
@@ -112,7 +124,7 @@ public sealed class ReleaseButton : RoleButton
         if (!Button) return;
         var button = Button!;
         var holding = button.isActiveAndEnabled && RoundState.InRound && RoundState.Alive(player) &&
-            player.Data.Role is PenguinRole && RoundState.Drags.ContainsKey(player.PlayerId);
+            RoleFacts.Is<PenguinRole>(player.Data.Role) && RoundState.Drags.ContainsKey(player.PlayerId);
         if (!holding)
         {
             button.graphic.transform.localPosition = button.position;
@@ -142,20 +154,28 @@ public sealed class DetonateButton : RoleButton
     public override BaseKeybind Keybind => MiraGlobalKeybinds.PrimaryAbility;
     public override string Name => "Explode";
     public override Ability Action => Ability.Detonate;
-    public override bool Enabled(RoleBehaviour? role) => role is BomberRole;
+    public override bool Enabled(RoleBehaviour? role) => RoleFacts.Is<BomberRole>(role);
+}
+public sealed class HackButton : RoleButton
+{
+    public override string Name => "Hack";
+    public override Ability Action => Ability.Hack;
+    public override float EffectDuration => HackerState.Duration;
+    public override bool Enabled(RoleBehaviour? role) => RoleFacts.Is<HackerRole>(role);
+    public override bool CanUse() => base.CanUse() && !HackerState.Active;
 }
 public sealed class InvestigateButton : TargetButton
 {
     public override string Name => "Investigate";
     public override Ability Action => Ability.Investigate;
-    public override bool Enabled(RoleBehaviour? role) => role is ConsigliereRole;
+    public override bool Enabled(RoleBehaviour? role) => RoleFacts.Is<ConsigliereRole>(role);
 }
 public sealed class MarkButton : RoleButton
 {
     public override string Name => "Mark";
     public override Ability Action => Ability.Mark;
     public override float Cooldown => RoleTuning.RecallCooldown;
-    public override bool Enabled(RoleBehaviour? role) => role is EscapistRole;
+    public override bool Enabled(RoleBehaviour? role) => RoleFacts.Is<EscapistRole>(role);
     public override bool CanUse() => base.CanUse() && !RoundState.Marks.ContainsKey(PlayerControl.LocalPlayer.PlayerId);
 }
 public sealed class RecallButton : RoleButton
@@ -163,7 +183,7 @@ public sealed class RecallButton : RoleButton
     public override string Name => "Recall";
     public override Ability Action => Ability.Recall;
     public override float InitialCooldown => 0;
-    public override bool Enabled(RoleBehaviour? role) => role is EscapistRole;
+    public override bool Enabled(RoleBehaviour? role) => RoleFacts.Is<EscapistRole>(role);
     public override bool CanUse() => base.CanUse() && RoundState.Marks.ContainsKey(PlayerControl.LocalPlayer.PlayerId);
 }
 public sealed class FakeButton : RoleButton
@@ -171,7 +191,7 @@ public sealed class FakeButton : RoleButton
     public override string Name => "Fake";
     public override Ability Action => Ability.Fake;
     public override int MaxUses => 1;
-    public override bool Enabled(RoleBehaviour? role) => role is FakerRole;
+    public override bool Enabled(RoleBehaviour? role) => RoleFacts.Is<FakerRole>(role);
     public override bool CanUse() => base.CanUse() && !FakerState.Used.Contains(PlayerControl.LocalPlayer.PlayerId);
 }
 public sealed class UnfakeButton : RoleButton
@@ -183,7 +203,7 @@ public sealed class UnfakeButton : RoleButton
     public override Ability Action => Ability.Unfake;
     public override float InitialCooldown => 0;
     public override float Cooldown => 0;
-    public override bool Enabled(RoleBehaviour? role) => role is FakerRole;
+    public override bool Enabled(RoleBehaviour? role) => RoleFacts.Is<FakerRole>(role);
     public override bool CanUse() => FakerState.CanUnfake(PlayerControl.LocalPlayer);
 }
 public sealed class AlertButton : RoleButton
@@ -192,34 +212,33 @@ public sealed class AlertButton : RoleButton
     public override Ability Action => Ability.Alert;
     public override float EffectDuration => RoleTuning.AlertDuration;
     public override int MaxUses => RoleTuning.AlertUses;
-    public override bool Enabled(RoleBehaviour? role) => role is VeteranRole;
+    public override bool Enabled(RoleBehaviour? role) => RoleFacts.Is<VeteranRole>(role);
 }
 public sealed class ShootButton : TargetButton
 {
     public override BaseKeybind Keybind => VanillaKeybinding<global::KillButton>.Instance;
     public override string Name => "Shoot";
     public override Ability Action => Ability.Shoot;
-    public override bool Enabled(RoleBehaviour? role) => role is SheriffRole;
+    public override bool Enabled(RoleBehaviour? role) => RoleFacts.Is<SheriffRole>(role);
 }
 public sealed class ExamineButton : CustomActionButton<DeadBody>
 {
     public override bool CanClick() => !RoleGuide.BlocksControls && Button && Button!.isActiveAndEnabled && base.CanClick();
-    private bool hudVisible = true;
     public override ButtonLocation Location { get; set; } = ButtonLocation.BottomRight;
     public override BaseKeybind Keybind => MiraGlobalKeybinds.PrimaryAbility;
     public override void SetActive(bool visible, RoleBehaviour role)
-    { hudVisible = visible; base.SetActive(visible, role); }
+    { base.SetActive(visible, role); }
     public override void FixedUpdateHandler(PlayerControl player)
     {
         ButtonPresentation.Sync(this, Ability.Examine, player);
         base.FixedUpdateHandler(player);
-        ButtonPresentation.Refresh(this, Ability.Examine, player, hudVisible);
+        ButtonPresentation.Refresh(this, Ability.Examine, player, AbilityHudVisibility.Visible);
     }
     public override string Name => "Sniff";
     public override float Cooldown => RoundState.Cooldown(Ability.Examine);
     public override float InitialCooldown => 10;
     public override LoadableAsset<Sprite> Sprite => Assets.For(Ability.Examine);
-    public override bool Enabled(RoleBehaviour? role) => role is CoronerRole;
+    public override bool Enabled(RoleBehaviour? role) => RoleFacts.Is<CoronerRole>(role);
     public override bool CanUse() => base.CanUse() && RoundState.CanAct(PlayerControl.LocalPlayer) && RoundState.Ready(PlayerControl.LocalPlayer.PlayerId, Ability.Examine);
     public override DeadBody? GetTarget() => !RoundState.CanAct(PlayerControl.LocalPlayer) ? null : UnityEngine.Object.FindObjectsOfType<DeadBody>().ToArray()
         .Where(b => !b.Reported && Vector2.Distance(PlayerControl.LocalPlayer.GetTruePosition(), b.TruePosition) <= PlayerControl.LocalPlayer.MaxReportDistance &&
@@ -234,7 +253,10 @@ public static class Assets
     private static readonly Dictionary<string, LoadableAsset<Sprite>> Cache = new();
     private sealed class VanillaKillAsset : LoadableAsset<Sprite>
     { public override Sprite LoadAsset() => HudManager.Instance.KillButton.graphic.sprite; }
+    private sealed class VanillaHackAsset : LoadableAsset<Sprite>
+    { public override Sprite LoadAsset() => HudManager.Instance.SabotageButton.graphic.sprite; }
     private static readonly LoadableAsset<Sprite> VanillaKill = new VanillaKillAsset();
+    private static readonly LoadableAsset<Sprite> VanillaHack = new VanillaHackAsset();
     public static LoadableAsset<Sprite> Art(string name, float pixelsPerUnit = 100)
     {
         if (!Cache.TryGetValue(name, out var sprite)) Cache[name] = sprite = new LoadableResourceAsset($"AmongUsDogsRoles.Resources.Abilities.{name}.png", pixelsPerUnit);
@@ -243,6 +265,7 @@ public static class Assets
     public static LoadableAsset<Sprite> For(Ability a)
     {
         if (a == Ability.Kill) return VanillaKill;
+        if (a == Ability.Hack) return VanillaHack;
         var name = a switch
         {
             Ability.Shoot => "Shoot",
@@ -285,8 +308,10 @@ public static class ButtonPresentation
     {
         // Display the accepted host state, including changes initiated remotely.
         var alerting = ability == Ability.Alert && RoundState.Alerting(player);
-        button.EffectActive = alerting;
+        var hacking = ability == Ability.Hack && HackerState.Active;
+        button.EffectActive = alerting || hacking;
         button.Timer = alerting ? Mathf.Max(0, RoundState.Alerts[player.PlayerId] - Time.time) :
+            hacking ? Mathf.Max(0, HackerState.Until - Time.time) :
             ability is Ability.Execute or Ability.Release or Ability.Unfake ? 0 :
             Mathf.Max(0, RoundState.ReadyAt.GetValueOrDefault((player.PlayerId, RoundState.Slot(ability))) - Time.time);
         if (ability == Ability.Drag)
@@ -298,7 +323,7 @@ public static class ButtonPresentation
     public static void Refresh(CustomActionButton button, Ability ability, PlayerControl player, bool hudVisible)
     {
         if (!button.Button) return;
-        button.Button!.ToggleVisible((hudVisible || ability == Ability.Unfake && player.Data.Role is FakerRole) && button.Enabled(player.Data.Role) && RoundState.InRound && Relevant(ability));
+        button.Button!.ToggleVisible((hudVisible || ability == Ability.Unfake && RoleFacts.Is<FakerRole>(player.Data.Role)) && button.Enabled(player.Data.Role) && RoundState.InRound && Relevant(ability));
         if (button.MaxUses <= 0)
         {
             button.Button.usesRemainingText.gameObject.SetActive(false);
@@ -306,5 +331,6 @@ public static class ButtonPresentation
         }
         else button.Button.SetUsesRemaining(button.UsesLeft);
         if (ability == Ability.Alert) button.OverrideName(RoundState.Alerting(player) ? "Alerting" : "Alert");
+        if (ability == Ability.Hack) button.OverrideName(HackerState.Active ? "Hacking" : "Hack");
     }
 }

@@ -25,6 +25,7 @@ public partial class Plugin : BasePlugin, IMiraPlugin
     {
         Harmony.PatchAll();
         AddComponent<RoleGuide>();
-        Log.LogInfo("AmongUsDogsRoles 0.1.21 — nine roles, Steam 2026.8.18 / 18.0.x");
+        AddComponent<GuessPicker>();
+        Log.LogInfo("AmongUsDogsRoles 0.2.1 — ten roles, Steam 2026.8.18 / 18.0.x");
     }
 }

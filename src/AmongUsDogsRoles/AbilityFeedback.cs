@@ -40,7 +40,7 @@ public static class AbilityFeedback
         var player = PlayerControl.LocalPlayer;
         if (!player || player.Data?.Role == null) return;
         var active = RoundState.InRound && RoundState.Alive(player);
-        var marked = active && player.Data.Role is EscapistRole && RoundState.Marks.ContainsKey(player.PlayerId);
+        var marked = active && RoleFacts.Is<EscapistRole>(player.Data.Role) && RoundState.Marks.ContainsKey(player.PlayerId);
         if (marked)
         {
             if (!beacon) beacon = Sprite("AmongUsDogsRolesRecallMark");
@@ -51,10 +51,24 @@ public static class AbilityFeedback
         }
         if (beacon) beacon!.gameObject.SetActive(marked);
 
-        var tracking = active && player.Data.Role is CoronerRole && RoundState.Tracks.TryGetValue(player.PlayerId, out _);
+        var tracking = active && RoleFacts.Is<CoronerRole>(player.Data.Role) && RoundState.Tracks.TryGetValue(player.PlayerId, out _);
         var killer = tracking ? RoundState.Find(RoundState.Tracks[player.PlayerId]) : null;
         var bodyTrack = FakerState.BodyTracks.Contains(player.PlayerId);
         tracking &= bodyTrack ? killer && FakerState.Active.ContainsKey(killer!.PlayerId) && !killer.Data.Disconnected : RoundState.Alive(killer);
+        if (tracking)
+        {
+            var destination = bodyTrack ? FakerState.BodyPosition(killer!.PlayerId) : killer!.GetTruePosition();
+            var camera = hud.PlayerCam.GetComponent<Camera>();
+            // One screen is the gameplay camera's full vertical world span.
+            if (!Rules.KeepTrail(Time.time, RoundState.TrackUntil.GetValueOrDefault(player.PlayerId),
+                    Vector2.Distance(player.GetTruePosition(), destination), camera.orthographicSize * 2))
+            {
+                RoundState.Tracks.Remove(player.PlayerId);
+                RoundState.TrackUntil.Remove(player.PlayerId);
+                FakerState.BodyTracks.Remove(player.PlayerId);
+                tracking = false;
+            }
+        }
         if (tracking)
         {
             if (!arrow)

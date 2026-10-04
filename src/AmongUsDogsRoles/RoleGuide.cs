@@ -23,13 +23,15 @@ public static class RoleGuideCatalog
         new("Escapist", "IMPOSTOR", "64BE82", "Mark", "Plan your escape.",
             "<b>Mark</b> saves your current position. <b>Recall</b> teleports you back to that spot, even after making a kill.\n\nRecalling uses up the mark. Meetings clear unused marks.\n\nYou can also kill normally."),
         new("Faker", "IMPOSTOR", "B69ADB", "Fake", "Play dead. Choose your moment.",
-            "<b>Fake</b> your death once per game. Your body can be reported. You count as dead, cannot vote, move, kill or sabotage, and see only the spot where you faked.\n\n<b>Unfake</b> outside meetings to return alive at that spot. You can kill, sabotage and vote again.\n\nA Coroner sniff points to your fake body.\n<b>CAUTION:</b> if the faker is the last imposter left and uses his fake and a meeting starts while he is faked, imposters lose immediately"),
+            "<b>Fake</b> your death once per game, leaving a reportable body. You count as dead, cannot act or vote, and see only your death spot.\n\n<b>Unfake</b> outside meetings to revive there. Faking never reveals other roles. Coroner trails obey their normal limits.\n\n<b>CAUTION:</b> If you are the last impostor and a meeting starts while you are faking, impostors lose immediately."),
+        new("Hacker", "IMPOSTOR", "55D27D", "Investigate", "Make their information unreliable.",
+            "<b>Hack</b> secretly freezes all Vitals, including Scientist Vitals, for <b>15 seconds</b>. Players killed during the hack still appear alive.\n\nAdmin moves a few counts between occupied rooms, keeping the total unchanged. Cameras swap the names and colors of paired players in roughly half the living lobby. Positions and movement remain real.\n\nMeetings end the hack. You can also kill normally."),
         new("Veteran", "CREWMATE", "CBA568", "Alert", "Make attackers think twice.",
             "<b>Alert</b> briefly protects you from direct abilities. A player who tries to kill, shoot, capture or investigate you dies, and their action is blocked.\n\nAlerts have limited uses and a cooldown. They do not protect you from a Kamikaze's explosion.\n\nComplete your tasks and help vote out the impostors."),
         new("Sheriff", "CREWMATE", "F5D246", "Shoot", "Choose your shot carefully.",
             "<b>Shoot</b> a nearby player. Hitting an impostor or the Jester kills them.\n\nShooting a crewmate kills only you. An alert Veteran also retaliates against your shot.\n\nComplete your tasks and help vote out the impostors."),
         new("Coroner", "CREWMATE", "6ED7D7", "Sniff", "Follow the evidence.",
-            "<b>Sniff</b> a nearby body to get a private arrow pointing to its killer. The trail lasts until the next meeting or the killer dies.\n\nA Faker's fake body points back to that body; the trail clears when they unfake.\n\nYou <b>cannot report bodies</b>, but you can call emergency meetings. Complete your tasks and share what you discover."),
+            "<b>Sniff</b> a nearby body to get a private arrow pointing to its killer. The trail lasts up to 10 seconds, ending sooner within 1.5 screen heights of the killer. Sniff again to renew a distant trail.\n\nA Faker's fake body points back to that body; the trail clears when they unfake.\n\nYou <b>cannot report bodies</b>, but you can call emergency meetings. Complete your tasks and share what you discover."),
         new("Jester", "NEUTRAL", "F087C8", "", "Make them vote you out.",
             "Get <b>voted out</b> to win the match alone. Being killed, a tied vote or a skip does not give you a win.\n\nYour task list is fake: you cannot complete tasks and they do not count toward task progress.\n\nYou count with the crew for the impostor win threshold, but do not share a normal crew or impostor victory.")
     ];
@@ -108,7 +110,7 @@ public sealed class RoleGuide(IntPtr pointer) : MonoBehaviour(pointer)
         for (var i = 0; i < rows.Count; i++) if (RowBounds(i).Contains(point)) { Select(i); return; }
     }
 
-    [HideFromIl2Cpp] private Rect RowBounds(int i) => new(PanelBounds.x + 22, PanelBounds.y + 112 + i * 37, 202, 33);
+    [HideFromIl2Cpp] private Rect RowBounds(int i) => new(PanelBounds.x + 22, PanelBounds.y + 112 + i * 33, 202, 30);
 
     public void Open()
     {
@@ -158,10 +160,10 @@ public sealed class RoleGuide(IntPtr pointer) : MonoBehaviour(pointer)
         for (var i = 0; i < RoleGuideCatalog.Entries.Length; i++)
         {
             var entry = RoleGuideCatalog.Entries[i];
-            var row = Box("Role-" + entry.Name, panel, new(22, 112 + i * 37, 202, 33), Color.white);
+            var row = Box("Role-" + entry.Name, panel, new(22, 112 + i * 33, 202, 30), Color.white);
             rows.Add(row.GetComponent<Image>());
             Box("Accent", row, new(0, 6, 3, 21), Parse(entry.Color));
-            Text("Name", row, new(14, 0, 181, 33), entry.Name, 21);
+            Text("Name", row, new(14, 0, 181, 30), entry.Name, 21);
         }
         team = Text("Team", panel, new(266, 108, 460, 24), "", 17);
         title = Text("RoleTitle", panel, new(264, 132, 454, 46), "", 34);
@@ -213,13 +215,13 @@ public sealed class RoleGuide(IntPtr pointer) : MonoBehaviour(pointer)
 }
 
 [HarmonyPatch(typeof(PassiveButtonManager), nameof(PassiveButtonManager.Update))]
-public static class GuidePointerPatch { public static bool Prefix() => !RoleGuide.BlocksPointer; }
+public static class GuidePointerPatch { public static bool Prefix() => !RoleGuide.BlocksPointer && !GuessPicker.Blocks; }
 
 [HarmonyPatch(typeof(KeyboardJoystick), nameof(KeyboardJoystick.HandleHud))]
-public static class GuideHotkeyPatch { public static bool Prefix() => !RoleGuide.BlocksControls; }
+public static class GuideHotkeyPatch { public static bool Prefix() => !RoleGuide.BlocksControls && !GuessPicker.Blocks; }
 
 [HarmonyPatch(typeof(ControllerManager), nameof(ControllerManager.Update))]
-public static class GuideControllerPatch { public static bool Prefix() => !RoleGuide.BlocksControls; }
+public static class GuideControllerPatch { public static bool Prefix() => !RoleGuide.BlocksControls && !GuessPicker.Blocks; }
 
 [HarmonyPatch(typeof(PlayerControl), nameof(PlayerControl.CanMove), MethodType.Getter)]
 public static class GuideMovementPatch

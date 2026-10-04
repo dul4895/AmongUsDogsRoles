@@ -8,6 +8,8 @@ namespace AmongUsDogsRoles;
 // All consequential decisions run once, on the host. UI cooldowns are advisory.
 public static class AbilityService
 {
+    public static bool CanCapture(PlayerControl target) =>
+        !RoundState.Dragged(target.PlayerId) && !RoundState.Drags.ContainsKey(target.PlayerId);
     public static bool InReach(PlayerControl actor, PlayerControl target, bool allowImpostor = false) =>
         actor != target && RoundState.Alive(actor) && actor.Data.Role != null &&
         RoundState.Alive(target) && target.Data.Role != null && RoundState.Mobile(target) &&
@@ -31,6 +33,11 @@ public static class AbilityService
     }
     public static void Handle(PlayerControl actor, Request request)
     {
+        if (request.Ability == Ability.Drag)
+        {
+            KidnapperCapture.Handle(actor, request.Target);
+            return;
+        }
         if (request.Ability == Ability.Unfake)
         {
             if (!FakerState.CanUnfake(actor)) return;
@@ -43,15 +50,16 @@ public static class AbilityService
         var role = actor.Data.Role;
         bool correctRole = a switch
         {
-            Ability.Kill => role is ILightRole && role.IsImpostor,
-            Ability.Drag or Ability.Release or Ability.Execute => role is PenguinRole,
-            Ability.Detonate => role is BomberRole,
-            Ability.Investigate => role is ConsigliereRole,
-            Ability.Mark or Ability.Recall => role is EscapistRole,
-            Ability.Alert => role is VeteranRole,
-            Ability.Shoot => role is SheriffRole,
-            Ability.Examine => role is CoronerRole,
-            Ability.Fake => role is FakerRole,
+            Ability.Kill => RoleFacts.IsImpostor(role),
+            Ability.Drag or Ability.Release or Ability.Execute => RoleFacts.Is<PenguinRole>(role),
+            Ability.Detonate => RoleFacts.Is<BomberRole>(role),
+            Ability.Investigate => RoleFacts.Is<ConsigliereRole>(role),
+            Ability.Mark or Ability.Recall => RoleFacts.Is<EscapistRole>(role),
+            Ability.Alert => RoleFacts.Is<VeteranRole>(role),
+            Ability.Shoot => RoleFacts.Is<SheriffRole>(role),
+            Ability.Examine => RoleFacts.Is<CoronerRole>(role),
+            Ability.Fake => RoleFacts.Is<FakerRole>(role),
+            Ability.Hack => RoleFacts.Is<HackerRole>(role),
             _ => false,
         };
         if (!correctRole) return;
@@ -59,6 +67,11 @@ public static class AbilityService
         var target = RoundState.Find(request.Target);
         switch (a)
         {
+            case Ability.Hack:
+                if (HackerState.Active) return;
+                RoundState.Consume(actor, a, HackerState.Duration + RoleTuning.HackCooldown);
+                HackRpc.Start();
+                break;
             case Ability.Fake:
                 if (FakerState.Used.Contains(actor.PlayerId)) return;
                 var spot = actor.transform.position;
@@ -67,10 +80,8 @@ public static class AbilityService
             case Ability.Kill:
             case Ability.Shoot:
             case Ability.Investigate:
-            case Ability.Drag:
                 if (target == null || !InReach(actor, target, a is Ability.Shoot or Ability.Investigate)) return;
                 if (RoundState.Drags.ContainsKey(actor.PlayerId)) return;
-                if (a == Ability.Drag && (RoundState.Dragged(target.PlayerId) || RoundState.Drags.ContainsKey(target.PlayerId) || !RoundState.Ready(actor.PlayerId, Ability.Kill))) return;
                 RoundState.Consume(actor, a);
                 if (Retaliate(actor, target)) return;
                 if (a == Ability.Kill) Kill(actor, target);
@@ -78,11 +89,6 @@ public static class AbilityService
                     Kill(actor, Rules.SheriffShot(RoundState.Team(target), false) == ShotResult.SheriffDies ? actor : target);
                 else if (a == Ability.Investigate)
                     StateRpc.Private(actor, new(StateKind.Reveal, actor.PlayerId, target.PlayerId));
-                else
-                {
-                    RoundState.Consume(actor, Ability.Kill);
-                    StateRpc.Broadcast(new(StateKind.Drag, actor.PlayerId, target.PlayerId, RoleTuning.DragDuration));
-                }
                 break;
             case Ability.Execute:
             case Ability.Release:

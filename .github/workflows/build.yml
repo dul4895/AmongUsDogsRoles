@@ -1,0 +1,26 @@
+name: Build AmongUsDogsRoles
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build and check gameplay rules
+        shell: pwsh
+        run: ./scripts/build.ps1
+      - name: Compile integration test helper
+        shell: pwsh
+        run: dotnet build tests/AmongUsDogsRoles.Testing -c Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AmongUsDogsRoles-build
+          path: src/AmongUsDogsRoles/bin/Release/net6.0/AmongUsDogsRoles.dll
+          if-no-files-found: error

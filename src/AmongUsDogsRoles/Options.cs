@@ -12,6 +12,10 @@ public sealed class RoleSetupOptions : AbstractOptionGroup
     public override uint GroupPriority => 0;
     [ModdedToggleOption("Customize abilities")]
     public bool Customize { get; set; } = false;
+    [ModdedToggleOption("Impostors can guess roles in meetings")]
+    public bool MeetingGuesses { get; set; } = false;
+    [ModdedNumberOption("Kill cooldown after meetings", 0, 60, 2.5f, MiraNumberSuffixes.Seconds)]
+    public float MeetingKillCooldown { get; set; } = 30;
 }
 
 [MiraIgnore]
@@ -25,6 +29,9 @@ public abstract class AdvancedRoleOptions<T> : AbstractRoleOptionGroup<T> where 
 public static class RoleTuning
 {
     public static bool Custom => OptionGroupSingleton<RoleSetupOptions>.Instance.Customize;
+    public static float MeetingKillCooldown => OptionGroupSingleton<RoleSetupOptions>.Instance.MeetingKillCooldown;
+    public static bool MeetingGuesses => OptionGroupSingleton<RoleSetupOptions>.Instance.MeetingGuesses;
+    public static float HackCooldown => Custom ? OptionGroupSingleton<HackerOptions>.Instance.Cooldown : 30;
     public static float DragCooldown => Custom ? OptionGroupSingleton<PenguinOptions>.Instance.Cooldown : 25;
     public static float DragDuration => Custom ? OptionGroupSingleton<PenguinOptions>.Instance.Duration : 10;
     public static float BombCooldown => Custom ? OptionGroupSingleton<BomberOptions>.Instance.Cooldown : 25;
@@ -36,6 +43,13 @@ public static class RoleTuning
     public static int AlertUses => Custom ? (int)OptionGroupSingleton<VeteranOptions>.Instance.Uses : 3;
     public static float ShootCooldown => Custom ? OptionGroupSingleton<SheriffOptions>.Instance.Cooldown : 25;
     public static float ExamineCooldown => Custom ? OptionGroupSingleton<CoronerOptions>.Instance.Cooldown : 5;
+}
+
+public sealed class HackerOptions : AdvancedRoleOptions<HackerRole>
+{
+    public override string GroupName => "Hacker";
+    [ModdedNumberOption("Hack cooldown after effect", 5, 60, 2.5f, MiraNumberSuffixes.Seconds)]
+    public float Cooldown { get; set; } = 30;
 }
 
 public sealed class PenguinOptions : AdvancedRoleOptions<PenguinRole>

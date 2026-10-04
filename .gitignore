@@ -5,3 +5,8 @@ artifacts/
 .vs/
 *.user
 *.suo
+.tools/
+.reference/
+.nuget/
+local.props
+*.log

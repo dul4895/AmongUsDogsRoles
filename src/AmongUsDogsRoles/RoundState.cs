@@ -14,6 +14,8 @@ public static class RoundState
     public static readonly Dictionary<byte, Vector2> Marks = new();
     public static readonly Dictionary<byte, byte> Killers = new();
     public static readonly Dictionary<byte, byte> Tracks = new();
+    public static readonly Dictionary<byte, float> TrackUntil = new();
+    public static int CaptureFrame = -1;
     public static readonly Dictionary<(byte Player, Ability Ability), float> ReadyAt = new();
     public static readonly Dictionary<byte, string> Revealed = new();
     public static readonly HashSet<byte> Jesters = new();
@@ -27,9 +29,9 @@ public static class RoundState
     public static bool Dragged(byte id) => Drags.Values.Any(d => d.Target == id);
     public static bool CanAct(PlayerControl p) => Alive(p) && p.Data.Role != null && Rules.CanAct(true, true, InRound,
         Mobile(p) && p.moveable && !p.shapeshifting && (!p.AmOwner || p.CanMove), Dragged(p.PlayerId));
-    public static bool Alerting(PlayerControl p) => Alive(p) && p.Data.Role is VeteranRole && Alerts.GetValueOrDefault(p.PlayerId) > Time.time;
+    public static bool Alerting(PlayerControl p) => Alive(p) && RoleFacts.Is<VeteranRole>(p.Data.Role) && Alerts.GetValueOrDefault(p.PlayerId) > Time.time;
     public static PlayerControl? Find(byte id) => PlayerControl.AllPlayerControls.ToArray().FirstOrDefault(p => p.PlayerId == id);
-    public static Faction Team(PlayerControl p) => p.Data.Role is ICustomRole role && role.Team == ModdedRoleTeams.Custom ? Faction.Neutral : p.Data.Role.IsImpostor ? Faction.Impostor : Faction.Crew;
+    public static Faction Team(PlayerControl p) => RoleFacts.Is<JesterRole>(p.Data.Role) ? Faction.Neutral : p.Data.Role.IsImpostor ? Faction.Impostor : Faction.Crew;
     public static float Cooldown(Ability ability) => ability switch
     {
         Ability.Drag => RoleTuning.DragCooldown,
@@ -39,6 +41,7 @@ public static class RoundState
         Ability.Alert => RoleTuning.AlertCooldown,
         Ability.Shoot => RoleTuning.ShootCooldown,
         Ability.Examine => RoleTuning.ExamineCooldown,
+        Ability.Hack => RoleTuning.HackCooldown,
         Ability.Kill or Ability.Execute => GameOptionsManager.Instance.CurrentGameOptions.GetFloat(AmongUs.GameOptions.FloatOptionNames.KillCooldown),
         _ => 0,
     };
@@ -46,17 +49,29 @@ public static class RoundState
     // Bomber dies on use, so its configurable cooldown is the wait before
     // exploding each round, including after meetings. Basic mode retains grace.
     public static float InitialCooldown(Ability a) => a == Ability.Detonate && RoleTuning.Custom ? RoleTuning.BombCooldown : 10;
+    public static float StartCooldown(Ability a, bool intro) => !intro && a is Ability.Kill or Ability.Shoot
+        ? RoleTuning.MeetingKillCooldown : InitialCooldown(a);
     public static bool Ready(byte player, Ability a) => Rules.Ready(Time.time, ReadyAt.GetValueOrDefault((player, Slot(a))));
-    public static void Consume(PlayerControl player, Ability a, float? duration = null) =>
-        StateRpc.Broadcast(new(StateKind.Cooldown, player.PlayerId, (byte)Slot(a), duration ?? Cooldown(a)));
+    public static void Consume(PlayerControl player, Ability a, float? duration = null)
+    {
+        var cooldown = duration ?? Cooldown(a);
+        // Unfake/Execute must not shorten an outstanding post-meeting kill delay.
+        if (Slot(a) == Ability.Kill)
+            cooldown = Math.Max(cooldown, ReadyAt.GetValueOrDefault((player.PlayerId, Ability.Kill)) - Time.time);
+        StateRpc.Broadcast(new(StateKind.Cooldown, player.PlayerId, (byte)Slot(a), cooldown));
+    }
 
     public static void Apply(Update d)
     {
         switch (d.Kind)
         {
+            case StateKind.MeetingDeath: MeetingGuesses.ApplyDeath(d.Actor, d.Target); break;
             case StateKind.Fake: FakerState.Fake(d.Actor, new(d.X, d.Y)); break;
             case StateKind.Unfake: FakerState.Unfake(d.Actor); break;
-            case StateKind.Drag: Drags[d.Actor] = new(d.Target, Time.time + d.Value, d.Value); break;
+            case StateKind.Drag:
+                Drags[d.Actor] = new(d.Target, Time.time + d.Value, d.Value);
+                if (Find(d.Actor)?.AmOwner == true) CaptureFrame = Time.frameCount;
+                break;
             case StateKind.Release: Release(d.Actor); break;
             case StateKind.Alert:
                 Alerts[d.Actor] = Time.time + d.Value;
@@ -85,6 +100,7 @@ public static class RoundState
                 break;
             case StateKind.Track:
                 Tracks[d.Actor] = d.Target;
+                TrackUntil[d.Actor] = Time.time + 10;
                 if (FakerState.Active.ContainsKey(d.Target)) FakerState.BodyTracks.Add(d.Actor);
                 else FakerState.BodyTracks.Remove(d.Actor);
                 break;
@@ -121,9 +137,11 @@ public static class RoundState
     public static void ClearRound()
     {
         AbilityFeedback.Clear();
+        HackerState.Clear();
         DragPresentation.Clear();
         foreach (var actor in Drags.Keys.ToArray()) Release(actor);
-        Alerts.Clear(); Marks.Clear(); Tracks.Clear(); FakerState.BodyTracks.Clear();
+        Alerts.Clear(); Marks.Clear(); Tracks.Clear(); TrackUntil.Clear(); FakerState.BodyTracks.Clear();
+        CaptureFrame = -1;
     }
     public static void Reset()
     {

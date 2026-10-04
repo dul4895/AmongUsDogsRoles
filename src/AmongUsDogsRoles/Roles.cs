@@ -16,6 +16,10 @@ public static class RoleNames
 public interface ILightRole : ICustomRole
 {
     string Help { get; }
+    bool ICustomRole.CanLocalPlayerSeeRole(PlayerControl player) =>
+        PlayerControl.LocalPlayer == player ||
+        (PlayerControl.LocalPlayer.Data.Role.IsImpostor && player.Data.Role.IsImpostor) ||
+        (PlayerControl.LocalPlayer.Data.IsDead && !FakerState.IsFaking(PlayerControl.LocalPlayer));
     string ICustomRole.RoleNameLocale => RoleNames.For(GetType());
     string ICustomRole.RoleDescriptionLocale => this switch
     {
@@ -24,6 +28,7 @@ public interface ILightRole : ICustomRole
         ConsigliereRole => "Discover their roles in secret.",
         EscapistRole => "Mark a spot and return to it.",
         FakerRole => "Play dead. Return when the time is right.",
+        HackerRole => "Corrupt vitals, Admin and camera identities.",
         VeteranRole => "Go on alert to punish attackers.",
         SheriffRole => "Shoot enemies. Avoid crewmates.",
         CoronerRole => "Sniff bodies to track killers.",
@@ -42,6 +47,13 @@ public interface ILightRole : ICustomRole
         CanUseSabotage = Team == ModdedRoleTeams.Impostor,
         TasksCountForProgress = Team == ModdedRoleTeams.Crewmate,
     };
+}
+
+public sealed class HackerRole(IntPtr ptr) : ImpostorRole(ptr), ILightRole
+{
+    public string Help => "Hack for 15 seconds: freeze vitals, distort Admin counts and swap camera identities for half the living lobby. You can also kill.";
+    public Color RoleColor => new Color32(85, 210, 125, 255);
+    public ModdedRoleTeams Team => ModdedRoleTeams.Impostor;
 }
 
 public sealed class PenguinRole(IntPtr ptr) : ImpostorRole(ptr), ILightRole
@@ -96,7 +108,7 @@ public sealed class SheriffRole(IntPtr ptr) : CrewmateRole(ptr), ILightRole
 }
 public sealed class CoronerRole(IntPtr ptr) : CrewmateRole(ptr), ILightRole
 {
-    public string Help => "Sniff a nearby body to track its killer with an arrow until the next meeting. You cannot report bodies.";
+    public string Help => "Sniff a nearby body to track its killer for up to 10 seconds. The arrow ends within 1.5 screen heights; sniff again for a new trail. You cannot report bodies.";
     public Color RoleColor => new Color32(110, 215, 215, 255);
     public ModdedRoleTeams Team => ModdedRoleTeams.Crewmate;
 }

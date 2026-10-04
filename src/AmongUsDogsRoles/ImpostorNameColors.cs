@@ -13,6 +13,8 @@ public static class ImpostorNameColors
         // Keep role art/colors, but use vanilla red whenever both players are impostors.
         // No alive check: dead impostors and a faking Faker still know their teammates.
         var local = PlayerControl.LocalPlayer;
+        if (FakerState.IsFaking(local) && otherRole && !otherRole.IsImpostor)
+            __result = Color.white;
         if (local && local.Data?.Role?.IsImpostor == true && otherRole && otherRole.IsImpostor)
             __result = Palette.ImpostorRed;
     }

@@ -19,7 +19,7 @@ public static class FakerState
     public static bool DeferEliminationUntilMeeting { get; private set; }
     public static bool OnlyFakedImpostors => GameData.Instance &&
         GameData.Instance.AllPlayers.ToArray().Any(p => p != null && !p.Disconnected && p.IsDead &&
-            p.Role is FakerRole && Active.ContainsKey(p.PlayerId)) &&
+            RoleFacts.Is<FakerRole>(p.Role) && Active.ContainsKey(p.PlayerId)) &&
         !GameData.Instance.AllPlayers.ToArray().Any(p => p != null && !p.Disconnected && !p.IsDead && p.Role != null && p.Role.IsImpostor);
 
     public static bool EndAtMeeting()
@@ -37,12 +37,12 @@ public static class FakerState
     }
     public static bool IsFaking(PlayerControl? p) => p && Active.ContainsKey(p!.PlayerId);
     public static bool CanUnfake(PlayerControl p) => p && p.Data != null && !p.Data.Disconnected &&
-        p.Data.Role is FakerRole && p.Data.IsDead && IsFaking(p) && RoundState.InRound && !MeetingEndRequested && !BlastOutcome.Drawing;
+        RoleFacts.Is<FakerRole>(p.Data.Role) && p.Data.IsDead && IsFaking(p) && RoundState.InRound && !MeetingEndRequested && !BlastOutcome.Drawing;
 
     public static void Fake(byte id, Vector2 position)
     {
         var p = RoundState.Find(id);
-        if (!RoundState.Alive(p) || p!.Data.Role is not FakerRole || !Used.Add(id)) return;
+        if (!RoundState.Alive(p) || !RoleFacts.Is<FakerRole>(p!.Data.Role) || !Used.Add(id)) return;
         Active[id] = position;
         if (p.AmOwner) LocalFakeFrame = Time.frameCount;
         var body = Object.Instantiate(GameManager.Instance.GetDeadBody(p.Data.Role));

@@ -1,4 +1,4 @@
-AmongUsDogsRoles 0.1.21 — GNU General Public License, version 3.
+AmongUsDogsRoles 0.2.1 — GNU General Public License, version 3.
 See LICENSE for the full license terms.
 
 Town of Us Mira: https://github.com/AU-Avengers/TOU-Mira
@@ -14,7 +14,7 @@ Mira custom murder/game-over integration, task counting, critical-sabotage
 checks, and revive/presentation patterns were adapted and simplified from
 Town of Us Mira and MiraAPI. This plugin does not include or link against
 TownOfUsMira.dll. Role mechanics, host validation, UI, and presentation have
-been substantially modified for AmongUsDogsRoles's nine-role roster.
+been substantially modified for AmongUsDogsRoles's ten-role roster.
 
 Explode, Sniff, Execute, Release, Investigate, ChainLink, Fake, Unfake,
 Blast0–Blast35 and Explosion.wav are original artwork/audio under this
@@ -31,3 +31,10 @@ Mira 1.7.3 Windows distribution.
 
 Among Us and its game assets belong to Innersloth. Users supply their own
 installed copy. This is an unofficial mod, not an Innersloth product.
+
+Optional development tools: Reactor.Debugger, NuclearPowered and contributors,
+LGPL-3.0-or-later, Reactor 2.5.1 commit
+04100970b66d57a2dd96f6f4eae0383362e9a321. setup-testing.ps1 downloads its
+source separately. The test helper adapts its dummy-spawning approach;
+the helper's remaining panel and test-state code is new and uses GPL-3.0.
+Neither testing plugin is part of the production mod.

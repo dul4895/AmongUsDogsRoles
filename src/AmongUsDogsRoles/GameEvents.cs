@@ -23,16 +23,19 @@ public static class GameEvents
         RoundState.ClearRound();
         foreach (var player in PlayerControl.AllPlayerControls.ToArray())
         {
-            if (player.Data.Role is JesterRole) RoundState.Jesters.Add(player.PlayerId);
+            if (RoleFacts.Is<JesterRole>(player.Data.Role)) RoundState.Jesters.Add(player.PlayerId);
             foreach (var ability in Enum.GetValues<Ability>())
                 if (ability is not (Ability.Execute or Ability.Release or Ability.Recall or Ability.Unfake))
-                    RoundState.ReadyAt[(player.PlayerId, RoundState.Slot(ability))] = Time.time + RoundState.InitialCooldown(ability);
+                    RoundState.ReadyAt[(player.PlayerId, RoundState.Slot(ability))] = Time.time + RoundState.StartCooldown(ability, e.TriggeredByIntro);
+            if (player.AmOwner && player.Data.Role.IsImpostor)
+                player.killTimer = RoundState.StartCooldown(Ability.Kill, e.TriggeredByIntro);
         }
         foreach (var button in CustomButtonManager.Buttons)
             if (button.GetType().Assembly == typeof(Plugin).Assembly)
             {
                 button.EffectActive = false;
-                button.Timer = button is ExecuteButton or ReleaseButton or RecallButton or UnfakeButton ? 0 : button is DetonateButton ? RoundState.InitialCooldown(Ability.Detonate) : 10;
+                var action = button is RoleButton roleButton ? roleButton.Action : button is TargetButton targetButton ? targetButton.Action : Ability.Examine;
+                button.Timer = button is ExecuteButton or ReleaseButton or RecallButton or UnfakeButton ? 0 : RoundState.StartCooldown(action, e.TriggeredByIntro);
             }
     }
     [RegisterEvent]
@@ -58,7 +61,7 @@ public static class GameEvents
     public static void Report(ReportBodyEvent e)
     {
         if (RoundState.Dragged(e.Reporter.PlayerId)) { e.Cancel(); return; }
-        if (e.Target != null && e.Reporter.Data.Role is CoronerRole)
+        if (e.Target != null && RoleFacts.Is<CoronerRole>(e.Reporter.Data.Role))
         {
             e.Cancel();
         }
@@ -147,7 +150,7 @@ public static class VoteOutcomePatch
 {
     public static void Prefix(NetworkedPlayerInfo exiled, bool tie)
     {
-        if (Rules.JesterWins(exiled != null && exiled.Role is JesterRole, tie, exiled == null, exiled != null && !exiled.IsDead))
+        if (Rules.JesterWins(exiled != null && RoleFacts.Is<JesterRole>(exiled.Role), tie, exiled == null, exiled != null && !exiled.IsDead))
             RoundState.JesterWinner = exiled!.PlayerId;
     }
 }
@@ -221,10 +224,11 @@ public static class HudPatch
         var player = PlayerControl.LocalPlayer;
         if (!player || player.Data == null) return;
         // Sniff has its own action/key; reporting is never an alias for it.
-        if (player.Data.Role is CoronerRole && RoundState.Alive(player)) __instance.ReportButton.ToggleVisible(false);
+        if (RoleFacts.Is<CoronerRole>(player.Data.Role) && RoundState.Alive(player)) __instance.ReportButton.ToggleVisible(false);
         JesterTasks.UpdateText(__instance, player);
         AbilityFeedback.Update(__instance);
         DragPresentation.Update();
         FakerState.Hud(__instance);
+        HackerState.Tick();
     }
 }

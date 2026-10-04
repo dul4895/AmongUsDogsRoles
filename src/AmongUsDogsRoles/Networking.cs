@@ -5,9 +5,9 @@ using Reactor.Networking.Rpc;
 
 namespace AmongUsDogsRoles;
 
-public enum Ability : byte { Kill, Drag, Release, Execute, Detonate, Investigate, Mark, Recall, Alert, Shoot, Examine, Fake, Unfake }
+public enum Ability : byte { Kill, Drag, Release, Execute, Detonate, Investigate, Mark, Recall, Alert, Shoot, Examine, Fake, Unfake, Hack }
 public readonly record struct Request(Ability Ability, byte Target);
-public enum StateKind : byte { Drag, Release, Alert, Mark, ClearMark, Track, Reveal, Cooldown, Blast, Fake, Unfake }
+public enum StateKind : byte { Drag, Release, Alert, Mark, ClearMark, Track, Reveal, Cooldown, Blast, Fake, Unfake, MeetingDeath }
 public readonly record struct Update(StateKind Kind, byte Actor, byte Target = 255, float Value = 0, float X = 0, float Y = 0);
 
 // Reactor binds the request to the sender's PlayerControl. Clients never supply a killer identity.
