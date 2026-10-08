@@ -46,3 +46,19 @@ Results are written to `artifacts/test-results/`. The test copies, dependency
 caches, raw results, and logs are ignored by Git. Historical development results
 are summarized in [the change notes](CHANGES_0.2.1.md); they are not a claim
 that every scenario has been rerun on a newly built release.
+
+## Version 19 / Influencer checks
+
+Use fresh 64-bit v19 game copies. Existing pre-v19 copies under `.tools/` must
+be replaced with fresh installations before using the testing scripts.
+In a fresh four-client lobby, run `./scripts/version19-checks.ps1` before
+`./scripts/playtest-fixes-checks.ps1`. This configures guaranteed custom roles
+and Influencer for the test, verifies natural allocation, kills a real custom
+Crewmate, sends a native Influencer image to another client, and checks Faker.
+Afterwards, disconnect the clients, host a fresh lobby in the same process,
+and run `./scripts/qa.ps1 1 role-settings-restore` before closing the host to
+restore the role rates saved at the start of the scenario.
+
+`./scripts/qa.ps1 1 v19-name-color-null` checks the guarded Mira name-color
+fallback in a connected test session. The October 4 results and current dogs
+server limitation are summarized in [the v19 notes](UPDATE_0.3.0.md).

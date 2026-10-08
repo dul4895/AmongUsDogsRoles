@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>AmongUsDogsRoles-Launcher</AssemblyName>
+    <Version>1.0.0</Version>
+    <RestoreSources>https://api.nuget.org/v3/index.json</RestoreSources>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../AmongUsDogsRoles.Launcher.Core/AmongUsDogsRoles.Launcher.Core.csproj" />
+  </ItemGroup>
+</Project>

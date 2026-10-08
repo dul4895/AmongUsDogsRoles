@@ -2,20 +2,31 @@
 
 Among Us with ten extra roles and familiar vanilla gameplay.
 
-The source is now **0.2.1**, with Kidnapper and Faker fixes, optional meeting
+Version **0.3.0** supports Among Us v19 and its Influencer ghost role,
+with Kidnapper and Faker fixes, optional meeting
 guesses, configurable post-meeting kill cooldowns, and the Hacker role.
-See [the changes and validation notes](docs/CHANGES_0.2.1.md).
+See [v19 installation and compatibility](docs/UPDATE_0.3.0.md) and
+[the earlier gameplay changes](docs/CHANGES_0.2.1.md).
 
 ## Setup
 
-Requires **Among Us 2026.8.18 on Windows/Steam**. Everyone in the lobby must use the same game and mod versions.
+A Windows **Update & Play** launcher is included in the
+[0.3.0 release](https://github.com/dul4895/AmongUsDogsRoles/releases/tag/v0.3.0). Friends can
+download its EXE once, choose their existing copied mod folder, and let it install
+future published updates there. The launcher does not discover or use the original
+Steam game folder; launching through Steam remains the vanilla option.
+See [launcher setup and release instructions](docs/LAUNCHER.md).
+Keep the launcher outside the mod folder, such as on your Desktop. Its unsigned
+EXE may trigger a Windows reputation warning. Manual installation remains available below.
 
-1. Download the ZIP from the [latest published release](https://github.com/dul4895/AmongUsDogsRoles/releases/latest). Check its version: source updates do not automatically publish a new release ZIP. To install 0.2.1 from source, use the build instructions below.
+Requires **Among Us 2026.9.29 / v19.0.0 on 64-bit Windows/Steam**. Everyone in the lobby must use the same game and mod versions. Start from a fresh copy of the updated game; old 32-bit mod installations cannot be upgraded by replacing only the mod DLL.
+
+1. Download **AmongUsDogsRoles-0.3.0.zip** from the [0.3.0 release](https://github.com/dul4895/AmongUsDogsRoles/releases/tag/v0.3.0). To build from source, use the instructions below.
 2. In Steam, open **Among Us → Manage → Browse local files**. Copy the clean, unmodded game folder somewhere else and name the copy **AmongUsDogsRoles**.
 3. Extract the ZIP's contents into that copy. The **BepInEx** and **dotnet** folders must sit directly beside **Among Us.exe**.
 4. Keep Steam running and launch **Among Us.exe** from the copied folder. The first launch can take several minutes.
 
-The **dogs** server is added and selected automatically. Use **Online** to host a lobby or join with a friend's code. Open **New roles** in the lobby or during a match for the full role guide.
+The **dogs** server is added and selected automatically, but as of October 4 it rejects v19 clients and needs an Impostor server update before Online play will work. Local multiplayer has been verified. Open **New roles** in the lobby or during a match for the full role guide.
 
 ## New roles
 
@@ -37,6 +48,10 @@ Living impostors can guess a living non-impostor's exact role: a correct guess
 kills the target, and a wrong guess kills the guesser. Faking Fakers cannot guess
 or see other players' hidden roles. **Kill cooldown after meetings** defaults
 to 30 seconds and applies to impostors and Sheriff independently of ability tuning.
+
+**Influencer** remains the game's native ghost Crewmate role. Configure it in
+the vanilla role settings. It is excluded from living-role allocation and the
+meeting guess picker; eligible dead Crewmates can send its normal image messages.
 
 ## Build and test
 

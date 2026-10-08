@@ -1,4 +1,4 @@
-AmongUsDogsRoles 0.2.1 — GNU General Public License, version 3.
+AmongUsDogsRoles 0.3.0 — GNU General Public License, version 3.
 See LICENSE for the full license terms.
 
 Town of Us Mira: https://github.com/AU-Avengers/TOU-Mira
@@ -38,3 +38,14 @@ LGPL-3.0-or-later, Reactor 2.5.1 commit
 source separately. The test helper adapts its dummy-spawning approach;
 the helper's remaining panel and test-state code is new and uses GPL-3.0.
 Neither testing plugin is part of the production mod.
+
+Version 0.3.0 targets Steam 2026.9.29 (v19), x64. Runtime: BepInEx build 753
+(0d275a4df3b6bbcb990a9715d0f037789624c377), MiraAPI 0.5.0, and Reactor
+2.5.1-ci.400 (100b89125cf83bd054c30d50cbd7df059bb431d7). The generic x64
+loader originates from the TOU Mira 1.7.3 Epic/MS Store archive; no TOU plugin,
+game files, or generated game bindings are redistributed. Its .NET runtime
+is 6.0.7. Bundled Il2CppInterop reports 1.5.3+5d129493f28ff78d6e3316149698597d76012587;
+the v1.5.3 source archive is an upstream reference, not a claimed exact
+reconstruction of that binary. Doorstop's included source is upstream reference
+71c5e43f4a17bff6c1d84a769079b8ddfbbc7210. Runtime files are unchanged apart
+from substituting the separately pinned Reactor DLL.

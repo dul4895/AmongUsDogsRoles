@@ -19,6 +19,14 @@ jobs:
       - name: Compile integration test helper
         shell: pwsh
         run: dotnet build tests/AmongUsDogsRoles.Testing -c Release
+      - name: Build and check Windows launcher
+        shell: pwsh
+        run: ./scripts/build-launcher.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AmongUsDogsRoles-launcher
+          path: artifacts/launcher/
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
           name: AmongUsDogsRoles-build

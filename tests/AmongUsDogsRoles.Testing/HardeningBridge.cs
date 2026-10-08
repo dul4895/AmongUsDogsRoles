@@ -56,6 +56,7 @@ public sealed class HardeningBridge(IntPtr ptr) : MonoBehaviour(ptr)
         var me = PlayerControl.LocalPlayer;
         return new {
             scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name,
+            version19 = Version19Checks.Snapshot(),
             gameVersion = Application.version, mode = client ? client.NetworkMode.ToString() : "none",
             map = GameOptionsManager.Instance?.currentNormalGameOptions?.MapId,
             impostorSetting = GameOptionsManager.Instance?.currentNormalGameOptions?.NumImpostors,
@@ -153,6 +154,7 @@ public sealed class HardeningBridge(IntPtr ptr) : MonoBehaviour(ptr)
         if(cmd=="host" || cmd=="join") { this.StartCoroutine(Connect(cmd=="host")); return; }
         if (!TestState.AllowedSession) throw new InvalidOperationException("Local or explicitly allowed private dogs session required");
         if (cmd=="unload-unused") { BlastProbe.Unload=Resources.UnloadUnusedAssets(); return; }
+        if (Version19Checks.Execute(d)) return;
         if (RoleGuideChecks.Execute(d)) return;
         if (SettingsControls.Execute(d)) return;
         if (PlaytestFixChecks.Execute(d)) return;
